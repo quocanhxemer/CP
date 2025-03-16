@@ -4,115 +4,124 @@
 #include <bits/stdc++.h>
 using namespace std;
 
+int n, m;
+char grid[1000][1000];
+char path[1000][1000];
+pair<int, int> p[1000][1000];
+
+int dplayer[1000][1000];
+int dmonsters[1000][1000];
+
+vector<pair<int, int>> monsters;
+pair<int, int> player;
+
+// directions: U D L R
+int di[] = {-1, 1, 0, 0};
+int dj[] = {0, 0, -1, 1};
+char directions[] = {'U', 'D', 'L', 'R'};
+
+int validPosition(int i, int j) {
+    return i >= 0 && i < n && j >= 0 && j < m;
+}
+
+int isExit(int i, int j) {
+    return i == 0 || i == n - 1 || j == 0 || j == m - 1;
+}
+
+void printPath(int x, int y) {
+    cout << "YES" << endl;
+    cout << dplayer[x][y] << endl;
+
+    string res = "";
+    pair<int, int> current = {x, y};
+    while (current != player) {
+        res = path[current.first][current.second] + res;
+        current = p[current.first][current.second];
+    }
+
+    cout << res << endl;
+}
+
 int main() {
-    int n, m;
     cin >> n >> m;
 
-    vector<pair<int, int>> exits;
-
-    string matrix[n];
     for (int i = 0; i < n; i++) {
-        cin >> matrix[i];
+        for (int j = 0; j < m; j++) {
+            cin >> grid[i][j];
 
-        if (i == 0 || i == n - 1) {
-            for (int j = 1; j < m - 1; j++) {
-                if (matrix[i][j] == 'A') {
-                    cout << "YES" << endl << 0 << endl;
+            if (grid[i][j] == 'M')
+                monsters.push_back({i, j});
+
+            if (grid[i][j] == 'A') {
+                if (isExit(i, j)) {
+                    cout << "YES" << endl;
+                    cout << 0 << endl;
                     return 0;
                 }
-                if (matrix[i][j] == '.') {
-                    exits.push_back({i, j});
-                }
+                player = {i, j};
             }
-        }
-
-        if (matrix[i][0] == '.') {
-            exits.push_back({i, 0});
-        }
-
-        if (matrix[i][m - 1] == '.') {
-            exits.push_back({i, m - 1});
-        }
-
-        if (matrix[i][0] == 'A' || matrix[i][m - 1] == 'A') {
-            cout << "YES" << endl << 0 << endl;
-            return 0;
         }
     }
 
-    int moveX[] = {0, 0, -1, 1};
-    int moveY[] = {-1, 1, 0, 0};
-    char directions[] = {'R', 'L', 'D', 'U'};
-    char path[n][m];
+    vector<pair<int, int>> exits;
 
-    int d[n][m];
-    for (auto [x, y] : exits) {
-        int monsters_distance = INT_MAX;
-        int player_distance = -1;
+    memset(dplayer, -1, sizeof(dplayer));
+    memset(path, 0, sizeof(path));
+    queue<pair<int, int>> q;
+    q.push(player);
+    dplayer[player.first][player.second] = 0;
 
-        queue<pair<int, int>> q;
-        int visited[n][m];
-        memset(visited, 0, sizeof(visited));
-        pair<int, int> p[n][m];
-        q.push({x, y});
-        visited[x][y] = 1;
-        d[x][y] = 0;
-        p[x][y] = {-1, -1};
-        path[x][y] = 's';
+    while (!q.empty()) {
+        auto [i, j] = q.front();
+        q.pop();
 
-        pair<int, int> player_coor;
+        for (int k = 0; k < 4; k++) {
+            int x = i + di[k];
+            int y = j + dj[k];
 
-        while (!q.empty()) {
-            int i = q.front().first;
-            int j = q.front().second;
-            q.pop();
+            if (!validPosition(x, y) || dplayer[x][y] != -1)
+                continue;
 
-            for (int k = 0; k < 4; k++) {
-                int u = i + moveX[k];
-                int v = j + moveY[k];
+            if (grid[x][y] != '#') {
+                dplayer[x][y] = dplayer[i][j] + 1;
+                p[x][y] = {i, j};
+                path[x][y] = directions[k];
+                q.push({x, y});
 
-                if (u < 0 || u >= n || v < 0 || v >= m) {
-                    continue;
-                }
-
-                if (visited[u][v]) {
-                    continue;
-                }
-
-                if (matrix[u][v] == '#') {
-                    continue;
-                }
-
-                d[u][v] = d[i][j] + 1;
-                p[u][v] = {i, j};
-                path[u][v] = directions[k];
-                visited[u][v] = 1;
-                q.push({u, v});
-
-                if (matrix[u][v] == 'A') {
-                    player_distance = d[u][v];
-                    player_coor = {u, v};
-                }
-
-                if (matrix[u][v] == 'M' && d[u][v] < monsters_distance) {
-                    monsters_distance = d[u][v];
+                if (isExit(x, y)) {
+                    exits.push_back({x, y});
                 }
             }
         }
+    }
 
-        if (player_distance != -1 && player_distance < monsters_distance) {
-            cout << "YES" << endl;
-            cout << d[player_coor.first][player_coor.second] << endl;
-            pair<int, int> c = player_coor;
-            while (true) {
-                if (path[c.first][c.second] == 's') {
-                    break;
-                }
-                cout << path[c.first][c.second];
-                c = p[c.first][c.second];
+    memset(dmonsters, -1, sizeof(dmonsters));
+    for (pair<int, int> m : monsters) {
+        q.push(m);
+        dmonsters[m.first][m.second] = 0;
+    }
+
+    while (!q.empty()) {
+        auto [i, j] = q.front();
+        q.pop();
+
+        for (int k = 0; k < 4; k++) {
+            int x = i + di[k];
+            int y = j + dj[k];
+
+            if (!validPosition(x, y) || dmonsters[x][y] != -1)
+                continue;
+
+            if (grid[x][y] != '#') {
+                dmonsters[x][y] = dmonsters[i][j] + 1;
+                q.push({x, y});
             }
-            cout << endl;
+        }
+    }
 
+    for (auto [i, j] : exits) {
+        if (dmonsters[i][j] == -1 || dmonsters[i][j] > dplayer[i][j]) {
+            printPath(i, j);
             return 0;
         }
     }
